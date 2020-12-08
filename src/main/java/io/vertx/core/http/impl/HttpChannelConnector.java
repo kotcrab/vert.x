@@ -40,6 +40,8 @@ import io.vertx.core.net.impl.VertxHandler;
 import io.vertx.core.spi.metrics.ClientMetrics;
 import io.vertx.core.spi.metrics.HttpClientMetrics;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * Performs the channel configuration and connection according to the client options and the protocol version.
  *
@@ -112,12 +114,19 @@ public class HttpChannelConnector implements ConnectionProvider<HttpClientConnec
     return conn.isValid();
   }
 
+  private AtomicInteger nextSlow = new AtomicInteger(1);
+
   @Override
   public void connect(ConnectionListener<HttpClientConnection> listener, ContextInternal context, Handler<AsyncResult<ConnectResult<HttpClientConnection>>> handler) {
     Promise<ConnectResult<HttpClientConnection>> promise = Promise.promise();
     promise.future().onComplete(handler);
     try {
-      doConnect(listener, (EventLoopContext) context, promise);
+      if(nextSlow.getAndDecrement() > 0) {
+        // simulate slow connect
+        client.getVertx().setTimer(3000, ar -> doConnect(listener, (EventLoopContext) context, promise));
+      } else {
+        doConnect(listener, (EventLoopContext) context, promise);
+      }
     } catch(Exception e) {
       promise.tryFail(e);
     }

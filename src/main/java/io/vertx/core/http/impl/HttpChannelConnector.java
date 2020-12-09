@@ -18,7 +18,6 @@ import io.netty.handler.codec.http.*;
 import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.timeout.IdleStateHandler;
 import io.vertx.core.AsyncResult;
-import io.vertx.core.Future;
 import io.vertx.core.Handler;
 import io.vertx.core.Promise;
 import io.vertx.core.http.HttpClientOptions;
@@ -34,6 +33,8 @@ import io.vertx.core.net.impl.ChannelProvider;
 import io.vertx.core.net.impl.SSLHelper;
 import io.vertx.core.net.impl.VertxHandler;
 import io.vertx.core.spi.metrics.HttpClientMetrics;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Performs the channel configuration and connection according to the client options and the protocol version.
@@ -95,12 +96,19 @@ class HttpChannelConnector implements ConnectionProvider<HttpClientConnection> {
     return conn.isValid();
   }
 
+  private AtomicInteger nextSlow = new AtomicInteger(1);
+
   @Override
   public void connect(ConnectionListener<HttpClientConnection> listener, ContextInternal context, Handler<AsyncResult<ConnectResult<HttpClientConnection>>> handler) {
     Promise<ConnectResult<HttpClientConnection>> promise = Promise.promise();
     promise.future().onComplete(handler);
     try {
-      doConnect(listener, context, promise);
+      if (nextSlow.getAndDecrement() > 0) {
+        // simulate slow connect
+        client.getVertx().setTimer(3000, ar -> doConnect(listener, context, promise));
+      } else {
+        doConnect(listener, context, promise);
+      }
     } catch(Exception e) {
       promise.tryFail(e);
     }

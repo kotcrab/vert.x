@@ -850,6 +850,11 @@ class Http1xClientConnection extends Http1xConnectionBase<WebSocketImpl> impleme
 
   @Override
   public boolean isValid() {
+    if (expirationTimestamp == 0) {
+      System.out.println("Connection with no expiration");
+    } else {
+      System.out.println("Connection with expiration");
+    }
     return expirationTimestamp == 0 || System.currentTimeMillis() <= expirationTimestamp;
   }
 

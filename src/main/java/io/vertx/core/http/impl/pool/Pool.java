@@ -376,6 +376,7 @@ public class Pool<C> {
       checkProgress();
     }
     connectionAdded.accept(holder.connection);
+    System.out.println("Connection satisfied waiters: " + waiters.size());
     for (Waiter<C> waiter : waiters) {
       waiter.handler.handle(Future.succeededFuture(holder.connection));
     }
